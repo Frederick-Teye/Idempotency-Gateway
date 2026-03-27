@@ -1,0 +1,51 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtual environments ---
+.venv/
+venv/
+ENV/
+env/
+
+# --- Django ---
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# Django static (if you collectstatic locally)
+staticfiles/
+
+# --- Unit test / coverage ---
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# --- Packaging ---
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- Environment files ---
+.env
+.env.*
+!.env-example
+
+# --- Redis dumps (if used locally) ---
+dump.rdb
+
+# --- Node (only if you add tooling, otherwise optional) ---
+node_modules/
