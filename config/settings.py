@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "payment_gateway.apps.PaymentGatewayConfig",
+    "rest_framework",
 ]
 
 MIDDLEWARE = [
