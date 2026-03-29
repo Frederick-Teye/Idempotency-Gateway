@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from decimal import Decimal
 
 
 class PaymentSerializer(serializers.Serializer):
@@ -8,7 +9,10 @@ class PaymentSerializer(serializers.Serializer):
     """
 
     amount = serializers.DecimalField(
-        max_digits=10, decimal_places=2, required=True, min_value=0.01
+        max_digits=10,
+        decimal_places=2,
+        required=True,
+        min_value=Decimal("0.01"),
     )
     currency = serializers.CharField(
         max_length=3, required=True, help_text="ISO 4217 currency code (e.g., GHS, USD)"
