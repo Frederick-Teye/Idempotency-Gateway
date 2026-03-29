@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "payment_gateway.apps.PaymentGatewayConfig",
+    "accounts.apps.AccountsConfig",
     "rest_framework",
 ]
 
