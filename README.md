@@ -1,133 +1,200 @@
 # Idempotency-Gateway (The "Pay-Once" Protocol)
-This challenge is designed to test your ability to bridge Computer Science fundamentals with Modern Backend Engineering.
 
-## 1. Business Context
-> **Client:** *FinSafe Transactions Ltd.* (A fast-growing Payment Processor).
+Welcome to the **Idempotency-Gateway** repository—a robust robust middleware service simulating a real-world payment processing environment with comprehensive idempotency guarantees.
 
-### The Problem
-FinSafe's clients (e-commerce shops) occasionally experience network timeouts. When this happens, their servers automatically retry sending payment requests. Recently, this has led to a critical issue: **Double Charging**.
+## 1. Business Context & Objective
 
-If a customer clicks "Pay," the request is sent, but the network lags. The client retries the request. FinSafe processes *both* requests, charging the customer twice. This is causing customer churn and regulatory headaches.
+In high-concurrency e-commerce environments, network drops or client delays can trigger automated payment request retries. For payment processors like _FinSafe Transactions Ltd._, this can lead to catastrophic double-charge scenarios, resulting in poor customer experience, support overhead, and regulatory issues.
 
-### The Solution
-FinSafe needs you to build an **Idempotency Layer**. This is a middleware service (or API) that ensures no matter how many times a client sends the same request, the payment is processed **exactly once**.
+This API acts as an **Idempotency Layer**. It processes a unique `Idempotency-Key` sent via HTTP headers on every payment request to ensure that a transaction is evaluated and charged exactly _once_, no matter how many duplicate attempts arrive from the client.
 
 ---
 
-## 2. Technical Objective
-Build a RESTful API that mimics a payment processing backend. It must check for a unique `Idempotency-Key` in the HTTP headers.
+## 2. Architecture & Logic Flow
 
-* **First Request:** Process the payment and save the response.
-* **Duplicate Request:** Detect the existing key and return the *saved* response immediately, without processing the payment again.
+This logical flowchart outlines the architectural idempotency flow taken when any payment request hits the `POST /api/v1/process-payment/` endpoint.
 
-
----
-
-## 3. Getting Started
-
-1.  **Fork this Repository:** Do not clone it directly. Create a fork to your own GitHub account.
-2.  **Environment:** You may use **Node.js, Python, Java or Go, etc.**. You may use any database or in-memory store (Redis, SQLite, or a simple native Map/Dictionary variable).
-3.  **Submission:** Your final submission will be a link to your forked repository containing the source code and documentation.
+![Architecture Flowchart](./flowchart.png)
 
 ---
 
-## 4. The Architecture Diagram 
-**Task:** Before you write any code, you must design the logic flow.
-**Deliverable:** A **Sequence Diagram** or **Flowchart** included in your README.
+## 3. Setup Instructions
+
+The project is built on **Python 3.x** and **Django REST Framework (DRF)**. A standard SQLite database is utilized by default to persist the idempotency records reliably.
+
+### Prerequisites
+
+- Python 3.10+
+- `pip` package manager
+- `git`
+
+### Installation Steps
+
+1. **Clone the Repository** (Or fork depending on your workflow)
+
+   ```bash
+   git clone <your-fork-url>
+   cd Idempotency-Gateway
+   ```
+
+2. **Create and Activate a Virtual Environment**
+
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Linux/macOS
+   # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install Dependencies**
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Setup Environment Variables**
+   Rename the provided `.env-example` file to `.env` and update the variables if necessary.
+
+   ```bash
+   cp .env-example .env
+   ```
+
+5. **Run Database Migrations**
+
+   ```bash
+   python manage.py makemigrations
+   python manage.py migrate
+   ```
+
+6. **Start the Development Server**
+   ```bash
+   python manage.py runserver
+   ```
+   _The server should now be running locally at `http://127.0.0.1:8000/`._
 
 ---
 
-## 5. User Stories & Acceptance Criteria
+## 4. API Documentation
 
-### User Story 1: The First Transaction (Happy Path)
-**As a** client system (e.g., an online store),  
-**I want to** send a payment request with a unique ID,  
-**So that** my transaction is processed successfully.
+Because modern financial platforms require security, the gateway incorporates Token-Based Authentication. You must first register a user and obtain a token before processing payments.
 
-**Acceptance Criteria:**
-- [ ] The API accepts a `POST` request to endpoint `/process-payment`.
-- [ ] The request header must contain `Idempotency-Key: <some-unique-string>`.
-- [ ] The request body accepts a JSON object (e.g., `{"amount": 100, "currency": "GHS"}`).
-- [ ] The server simulates processing (e.g., a 2-second delay) and returns a `200 OK` or `201 Created` response.
-- [ ] The response body should include a status message: `"Charged 100 GHS"`.
+### A. Authentication Endpoints
 
-### User Story 2: The Duplicate Attempt (Idempotency Logic)
-**As a** client system,  
-**I want to** safely retry a request if I don't hear back,  
-**So that** I don't accidentally double-charge the user.
+#### `POST /api/v1/auth/register/`
 
-**Acceptance Criteria:**
-- [ ] If the client sends a second `POST` request with the **same** `Idempotency-Key` and payload:
-    - [ ] The server must **NOT** run the processing logic again (no 2-second delay).
-    - [ ] The server must return the **exact same** response body and status code as the first successful request.
-    - [ ] The server returns a header `X-Cache-Hit: true` to indicate this was a replayed response.
+Create a new client/user account.
 
-### User Story 3: Different Request, Same Key (Fraud/Error Check)
-**As a** security officer,  
-**I want to** reject requests that reuse keys for different payments,  
-**So that** we maintain data integrity.
+- **Body:**
+  ```json
+  {
+    "email": "store@example.com",
+    "password": "strongpassword123",
+    "first_name": "Store",
+    "last_name": "Owner"
+  }
+  ```
+- **Response (201 Created):**
+  ```json
+  {
+      "user": { ... },
+      "token": "a1b2c3d4e5f6g7h8i9j0"
+  }
+  ```
 
-**Acceptance Criteria:**
-- [ ] If a request arrives with an existing `Idempotency-Key` but a **different** request body (e.g., changing amount from 100 to 500):
-    - [ ] The server must return a `422 Unprocessable Entity` or `409 Conflict` error.
-    - [ ] The error message should state: `"Idempotency key already used for a different request body."`
+#### `POST /api/v1/auth/login/`
 
----
+Login to receive your Auth Token.
 
-## 6. Bonus User Story (The "In-Flight" Check)
-**As a** system architect,  
-**I want to** handle cases where two identical requests arrive at the exact same time,  
-**So that** we don't succumb to race conditions.
-
-**Scenario:** Request A arrives. While Request A is still "processing" (during the 2-second delay), Request B (same key) arrives.
-
-**Acceptance Criteria:**
-- [ ] Request B should not start a new process.
-- [ ] Request B should not return `409 Conflict`.
-- [ ] Request B should wait (block) until Request A finishes, and then return the result of Request A.
+- **Body:**
+  ```json
+  {
+    "email": "store@example.com",
+    "password": "strongpassword123"
+  }
+  ```
 
 ---
 
-## 7. The "Developer's Choice" Challenge
-We believe great engineers are also product thinkers.
+### B. Payment Endpoint
 
-**Task:** Identify **one** additional feature or safety mechanism that would make this system better for a real-world Fintech company.
-1.  **Implement it.**
-2.  **Document it:** Explain *why* you added it in your README.
+#### `POST /api/v1/process-payment/`
+
+Process a payment idempotently.
+
+- **Headers:**
+  - `Authorization: Token <your-auth-token>`
+  - `Idempotency-Key: <valid-uuid-v4>` (Required)
+  - `Content-Type: application/json`
+
+- **Request Body:**
+  ```json
+  {
+    "amount": "100.50",
+    "currency": "GHS"
+  }
+  ```
+
+#### Expected Behaviors & Responses
+
+1. **The First Transaction (Happy Path)**
+   - **Scenario**: A completely new UUIDv4 `Idempotency-Key` is sent.
+   - **Response (`201 Created`)**: (Takes ~2 seconds processing time)
+     ```json
+     {
+       "status": "success",
+       "message": "Charged 100.50 GHS",
+       "amount": "100.50",
+       "currency": "GHS",
+       "idempotency_key": "c35e9f82-...-9a8f4c"
+     }
+     ```
+
+2. **The Duplicate Attempt (Idempotency Logic)**
+   - **Scenario**: The exact same key and payload are posted again.
+   - **Response (`201 Created`)**: (Returns **instantly**; no 2-second delay).
+   - **Header**: Includes `X-Cache-Hit: true`
+   - **Body**: _Same output as the first request._
+
+3. **Different Request, Same Key (Fraud/Error Check)**
+   - **Scenario**: An existing key is used, but the payload amount has changed.
+   - **Response (`422 Unprocessable Entity`)**:
+     ```json
+     {
+       "error": "Idempotency key already used for a different request body."
+     }
+     ```
+
+4. **Simultaneous Requests (The "In-Flight" Protocol)**
+   - **Scenario**: Two requests with the same key arrive at the exact millisecond (Race condition).
+   - **Outcome**: The database unique constraint is caught (`IntegrityError`), and the secondary request actively polls and blocks (`_wait_for_in_flight_request`) until the first request completes processing, returning the exact same response cleanly without triggering duplicates or raising a `409 Conflict`.
 
 ---
 
-## 8. Documentation Requirements
-Your final `README.md` must replace these instructions. It must cover:
+## 5. Design Decisions
 
-1.  **Architecture Diagram**
-2.  **Setup Instructions**
-3.  **API Documentation** 
-4.  **Design Decisions** 
-5.  **The Developer's Choice:** Description of the extra feature you added.
+- **Relational Storage over In-Memory Cache**:
+  While a fast in-memory store like Redis is excellent for speed, `SQLite/PostgreSQL` was chosen to preserve transactional durability. If an API pod restarts, we do not want to lose idempotency records resulting in a double charge.
+- **Idempotency Scope**:
+  The idempotency tracking is scoped uniquely to `("user", "key")` pairs (`unique_together` index in the model). This prevents "Client A" from accidentally clashing with "Client B" if they coincidentally happen to generate identical keys.
 
----
-Submit your repo link via the [online](https://forms.office.com/e/rGKtfeZCsH) form.
+- **Atomic Database Locks & Constraint Catching**:
+  Instead of utilizing complex distributed memory locks just for the `in-flight` validation check, we lean on database `IntegrityError` catches during record creation, then transition gracefully to a thread-level sleep/polling loop. This gracefully manages concurrent Race Conditions (User Story 4).
 
 ---
-## 🛑 Pre-Submission Checklist
-**WARNING:** Before you submit your solution, you **MUST** pass every item on this list.
-If you miss any of these critical steps, your submission will be **automatically rejected** and you will **NOT** be invited to an interview.
 
-### 1. 📂 Repository & Code
-- [ ] **Public Access:** Is your GitHub repository set to **Public**? (We cannot review private repos).
-- [ ] **Clean Code:** Did you remove unnecessary files (like `node_modules`, `.env` with real keys, or `.DS_Store`)?
-- [ ] **Run Check:** if we clone your repo and run `npm start` (or equivalent), does the server start immediately without crashing?
+## 6. The "Developer's Choice" Challenge
 
-### 2. 📄 Documentation (Crucial)
-- [ ] **Architecture Diagram:** Did you include a visual Diagram (Flowchart or Sequence Diagram) in the README?
-- [ ] **README Swap:** Did you **DELETE** the original instructions (the problem brief) from this file and replace it with your own documentation?
-- [ ] **API Docs:** Is there a clear list of Endpoints and Example Requests in the README?
+In this implementation, **two notable undocumented safety mechanisms** were developed to fortify the gateway dynamically for a "real-world Sandbox Fintech" company.
 
+### 1) UUIDv4 Strict Enforcement for Idempotency-Keys
 
-### 3. 🧹 Git Hygiene
-- [ ] **Commit History:** Does your repo have multiple commits with meaningful messages? (A single "Initial Commit" is a red flag).
+**What it is:**
+The API actively blocks any `Idempotency-Key` headers that are not strictly valid Version 4 UUIDs (raising a `400 Bad Request`).
+**Why it was added:**
+In real-world systems, if you allow clients to dictate their own raw strings (e.g., `Idempotency-Key: payment-1`, `payment-2`), you open the door to disastrous overlapping collisons. A client might reset their internal database, start generating keys from `payment-1` again, and suddenly their legitimate _new_ payments will be rejected as duplicates. Enforcing UUIDv4 guarantees high entropy and mathematical uniqueness globally.
 
----
-**Ready?**
-If you checked all the boxes above, submit your repository link in the application form. Good luck! 🚀
+### 2) Token-Based Authorization & Tenant Isolation
+
+**What it is:**
+I fully implemented a custom User model (`accounts` app) along with DRF `TokenAuthentication`. Payment records in the database have a `Foreign Key` relating back to the requesting client/user.
+**Why it was added:**
+Idempotency is a massive security risk if unauthenticated. If Client X learns that Client Y is going to send a payment with `Idempotency-Key=123`, Client X could pre-emptively fire that request with malicious data. By tying authentication directly to the Idempotency scope natively within the endpoint, the infrastructure behaves exactly like Stripe/PayPal's multi-tenant architecture, securely partitioning data.
