@@ -189,8 +189,9 @@ In this implementation, **two notable undocumented safety mechanisms** were deve
 
 **What it is:**
 The API actively blocks any `Idempotency-Key` headers that are not strictly valid Version 4 UUIDs (raising a `400 Bad Request`).
+
 **Why it was added:**
-In real-world systems, if you allow clients to dictate their own raw strings (e.g., `Idempotency-Key: payment-1`, `payment-2`), you open the door to disastrous overlapping collisons. A client might reset their internal database, start generating keys from `payment-1` again, and suddenly their legitimate _new_ payments will be rejected as duplicates. Enforcing UUIDv4 guarantees high entropy and mathematical uniqueness globally.
+I chose to force incoming idempotency keys to be strictly UUIDv4 to avoid a clash (collision) of the same idempotency key for the same client. In real-world systems, if you allow clients to dictate their own predictable raw strings (e.g., `payment-1`, `payment-2`), they might reset their internal systems or counters, regenerate an already used key, and accidentally get their new payments rejected. Enforcing UUIDv4 guarantees high entropy and prevents these accidental clashes.
 
 ### 2) Token-Based Authorization & Tenant Isolation
 
