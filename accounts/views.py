@@ -28,7 +28,7 @@ class UserRegistrationView(APIView):
 class UserLoginView(APIView):
     permission_classes = (AllowAny,)
 
-    def get(self, request):
+    def post(self, request):
         email = request.data.get("email")
         password = request.data.get("password")
         user = authenticate(username=email, password=password)
