@@ -44,7 +44,7 @@ The project is built on **Python 3.x** and **Django REST Framework (DRF)**. A st
 1. **Clone the Repository** (Or fork depending on your workflow)
 
    ```bash
-   git clone <your-fork-url>
+   git clone git@github.com:Frederick-Teye/Idempotency-Gateway.git
    cd Idempotency-Gateway
    ```
 
@@ -182,12 +182,13 @@ Process a payment idempotently.
 ## 5. Design Decisions
 
 - **Relational Storage over In-Memory Cache**:
-  While a fast in-memory store like Redis is excellent for speed, `SQLite/PostgreSQL` was chosen to preserve transactional durability. If an API pod restarts, we do not want to lose idempotency records resulting in a double charge.
+  While a fast in-memory store like Redis is excellent for speed, `SQLite` was chosen to preserve transactional durability.
+
 - **Idempotency Scope**:
   The idempotency tracking is scoped uniquely to `("user", "key")` pairs (`unique_together` index in the model). This prevents "Client A" from accidentally clashing with "Client B" if they coincidentally happen to generate identical keys.
 
 - **Atomic Database Locks & Constraint Catching**:
-  Instead of utilizing complex distributed memory locks just for the `in-flight` validation check, we lean on database `IntegrityError` catches during record creation, then transition gracefully to a thread-level sleep/polling loop. This gracefully manages concurrent Race Conditions (User Story 4).
+  Instead of utilizing complex distributed memory locks just for the `in-flight` validation check, I lean on database `IntegrityError` catches during record creation, then transition gracefully to a thread-level sleep/polling loop. This gracefully manages concurrent Race Conditions (User Story 4).
 
 ---
 
@@ -242,6 +243,8 @@ curl -X POST https://frederickteye.pythonanywhere.com/api/v1/auth/login/ \
            "password": "strongpassword123"
          }'
 ```
+_Note the `"token"` returned in the response._
+
 
 ### Step 3: Process the First Payment
 
