@@ -12,9 +12,20 @@ This API acts as an **Idempotency Layer**. It processes a unique `Idempotency-Ke
 
 ## 2. Architecture & Logic Flow
 
-This logical flowchart outlines the architectural idempotency flow taken when any payment request hits the `POST /api/v1/process-payment/` endpoint.
+The sequence diagram below illustrates the idempotency mechanism for payment processing. When a client sends a `POST /api/v1/process-payment/` request with an `Idempotency-Key` header and payment payload, the API Gateway ensures the transaction is processed exactly once, even under concurrent retries or network issues.
 
-![Architecture Flowchart](./flowchart.png)
+### Key Flow Steps:
+
+- **Validation**: The Gateway validates the `Idempotency-Key` as a strict UUIDv4 to prevent weak or predictable keys.
+- **Database Check**: Queries the Idempotency Store (Database) for an existing record matching the key and authenticated user.
+- **First Request Handling**: If no record exists, a new pending record is created, payment is processed (simulated with a 2-second delay), and the record is updated with the success response.
+- **Duplicate Request Handling**: If a record exists but the payload differs, a 422 error is returned to flag potential fraud or inconsistency.
+- **Cached Response**: If the record exists and the payload matches, the Gateway checks if processing is complete. For in-flight requests (race conditions), it polls the database briefly (up to 5 seconds) before returning the cached response with an `X-Cache-Hit: true` header.
+- **Error Recovery**: If payment processing fails, the pending record is deleted to allow retries.
+
+This design prevents double-charging, handles concurrency via database polling, and ensures reliability in high-traffic scenarios.
+
+![Sequence Diagram](./sequence-diagram.png)
 
 ---
 
