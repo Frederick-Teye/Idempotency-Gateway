@@ -99,8 +99,7 @@ Create a new client/user account.
   {
     "email": "store@example.com",
     "password": "strongpassword123",
-    "first_name": "Store",
-    "last_name": "Owner"
+    "password_confirm": "strongpassword123"
   }
   ```
 - **Response (201 Created):**
