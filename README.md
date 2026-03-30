@@ -217,6 +217,8 @@ Idempotency is a massive security risk if unauthenticated. If Client X learns th
 
 The application is deployed live and can be tested right from your terminal. The base URL is `https://frederickteye.pythonanywhere.com/`.
 
+> **Note:** You can replace the live URL with `http://127.0.0.1:8000` in the commands below to test this locally after following the setup instructions in Section 3.
+
 ### Step 1: Create an Account
 
 You must first create a user account to get an authentication token. You can skip this step if you already have an account and just proceed to login.
