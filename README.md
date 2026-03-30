@@ -243,8 +243,8 @@ curl -X POST https://frederickteye.pythonanywhere.com/api/v1/auth/login/ \
            "password": "strongpassword123"
          }'
 ```
-_Note the `"token"` returned in the response._
 
+_Note the `"token"` returned in the response._
 
 ### Step 3: Process the First Payment
 
@@ -298,4 +298,58 @@ curl -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
          }'
 ```
 
-_This will be caught by the gateway and return a `422 Unprocessable Entity`, rejecting the altered payout attempt._
+_This should return a `422 Unprocessable Entity` error, as the idempotency key is already used for a different request body._
+
+### Step 6: Stress Test - Concurrent Requests
+
+To demonstrate idempotency under stress, run 4 identical requests simultaneously using the same `Idempotency-Key`. This simulates a race condition where multiple retries arrive at once.
+
+- The first request will process the payment (taking ~2 seconds).
+- The remaining 3 will wait briefly (polling the database) and then return the cached response from the first request, with `X-Cache-Hit: true`.
+
+Run these commands in separate terminals or append `&` to run them in the background simultaneously. Use `-i` to include headers in the output.
+
+```bash
+# Request 1
+curl -i -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+     -H "Authorization: Token $TOKEN" \
+     -H "Idempotency-Key: $IDEMP_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "amount": "100.50",
+           "currency": "GHS"
+         }' &
+
+# Request 2
+curl -i -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+     -H "Authorization: Token $TOKEN" \
+     -H "Idempotency-Key: $IDEMP_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "amount": "100.50",
+           "currency": "GHS"
+         }' &
+
+# Request 3
+curl -i -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+     -H "Authorization: Token $TOKEN" \
+     -H "Idempotency-Key: $IDEMP_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "amount": "100.50",
+           "currency": "GHS"
+         }' &
+
+# Request 4
+curl -i -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+     -H "Authorization: Token $TOKEN" \
+     -H "Idempotency-Key: $IDEMP_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "amount": "100.50",
+           "currency": "GHS"
+         }'
+```
+
+Observe that only one request takes ~2 seconds, while the others return quickly with the cached data, demonstrating the idempotency mechanism in action.
+
