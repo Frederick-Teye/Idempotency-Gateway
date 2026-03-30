@@ -1,6 +1,6 @@
 # Idempotency-Gateway (The "Pay-Once" Protocol)
 
-Welcome to the **Idempotency-Gateway** repository—a robust robust middleware service simulating a real-world payment processing environment with comprehensive idempotency guarantees.
+Welcome to the **Idempotency-Gateway** repository, a robust middleware service simulating a real-world payment processing environment with comprehensive idempotency guarantees.
 
 ## 1. Business Context & Objective
 
@@ -352,4 +352,3 @@ curl -i -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/
 ```
 
 Observe that only one request takes ~2 seconds, while the others return quickly with the cached data, demonstrating the idempotency mechanism in action.
-
