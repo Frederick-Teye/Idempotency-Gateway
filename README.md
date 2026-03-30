@@ -4,7 +4,7 @@ Welcome to the **Idempotency-Gateway** repository, a robust middleware service s
 
 ## 1. Business Context & Objective
 
-In high-concurrency e-commerce environments, network drops or client delays can trigger automated payment request retries. For payment processors like _FinSafe Transactions Ltd._, this can lead to catastrophic double-charge scenarios, resulting in poor customer experience, support overhead, and regulatory issues.
+In high-concurrency e-commerce environments, network drops or client delays can trigger automated payment request retries. For payment processors like _FinSafe Transactions Ltd._, this can lead to double-charging, resulting in poor customer experience, support overhead, and regulatory issues.
 
 This API acts as an **Idempotency Layer**. It processes a unique `Idempotency-Key` sent via HTTP headers on every payment request to ensure that a transaction is evaluated and charged exactly _once_, no matter how many duplicate attempts arrive from the client.
 
