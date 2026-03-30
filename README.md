@@ -199,3 +199,90 @@ I chose to force incoming idempotency keys to be strictly UUIDv4 to avoid a clas
 I fully implemented a custom User model (`accounts` app) along with DRF `TokenAuthentication`. Payment records in the database have a `Foreign Key` relating back to the requesting client/user.
 **Why it was added:**
 Idempotency is a massive security risk if unauthenticated. If Client X learns that Client Y is going to send a payment with `Idempotency-Key=123`, Client X could pre-emptively fire that request with malicious data. By tying authentication directly to the Idempotency scope natively within the endpoint, the infrastructure behaves exactly like Stripe/PayPal's multi-tenant architecture, securely partitioning data.
+
+---
+
+## 7. Live Demonstration (cURL)
+
+The application is deployed live and can be tested right from your terminal. The base URL is `https://frederickteye.pythonanywhere.com/`.
+
+### Step 1: Create an Account
+
+You must first create a user account to get an authentication token. You can skip this step if you already have an account and just proceed to login.
+
+```bash
+curl -X POST https://frederickteye.pythonanywhere.com/api/v1/auth/register/ \
+     -H "Content-Type: application/json" \
+     -d '{
+           "email": "demouser1@example.com",
+           "password": "strongpassword123",
+           "password_confirm": "strongpassword123"
+         }'
+```
+
+_Note the `"token"` returned in the response._
+
+### Step 2: Login (If you already have an account)
+
+```bash
+curl -X POST https://frederickteye.pythonanywhere.com/api/v1/auth/login/ \
+     -H "Content-Type: application/json" \
+     -d '{
+           "email": "demouser1@example.com",
+           "password": "strongpassword123"
+         }'
+```
+
+### Step 3: Process the First Payment
+
+Export your token to your shell environment (replace `<your-token-here>` with the token from Step 1 or 2). We will use a static UUIDv4 for testing.
+
+```bash
+export TOKEN="<your-token-here>"
+export IDEMP_KEY="95ca80fa-40dd-4286-9b57-df457d19163f"
+
+curl -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+     -H "Authorization: Token $TOKEN" \
+     -H "Idempotency-Key: $IDEMP_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "amount": "100.50",
+           "currency": "GHS"
+         }'
+```
+
+_This request will take ~2 seconds and return a `201 Created` with a new payment record._
+
+### Step 4: Test Idempotency (Duplicate Request)
+
+Run the exact same command again to see the idempotency layer block duplicate processing. We use `-i` here to view the response headers (look for the custom `X-Cache-Hit: true` header).
+
+```bash
+curl -i -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+     -H "Authorization: Token $TOKEN" \
+     -H "Idempotency-Key: $IDEMP_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "amount": "100.50",
+           "currency": "GHS"
+         }'
+```
+
+_This request will return instantly with the exact same response body, proving the payment wasn't re-processed._
+
+### Step 5: Test Parameter Changing Fraud
+
+Try using the **same idempotency key** but changing the payload (e.g., changing the amount).
+
+```bash
+curl -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+     -H "Authorization: Token $TOKEN" \
+     -H "Idempotency-Key: $IDEMP_KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "amount": "5000.00",
+           "currency": "GHS"
+         }'
+```
+
+_This will be caught by the gateway and return a `422 Unprocessable Entity`, rejecting the altered payout attempt._
