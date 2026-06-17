@@ -1,10 +1,11 @@
-import time
+import asyncio
 import uuid
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db import IntegrityError
+from asgiref.sync import sync_to_async
 
 from .models import IdempotencyRecord
 from .serializers import PaymentSerializer
@@ -17,7 +18,7 @@ class PaymentCreateView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, *args, **kwargs):
+    async def post(self, request, *args, **kwargs):
         idem_key = request.headers.get("Idempotency-Key")
         if not idem_key:
             return Response(
@@ -44,9 +45,11 @@ class PaymentCreateView(APIView):
             "currency": validated_data["currency"],
         }
 
-        existing_record = IdempotencyRecord.objects.filter(
-            user=request.user, key=idem_key
-        ).first()
+        existing_record = await sync_to_async(
+            lambda: IdempotencyRecord.objects.filter(
+                user=request.user, key=idem_key
+            ).first()
+        )()
 
         if existing_record:
             if existing_record.request_body != request_body:
@@ -57,12 +60,12 @@ class PaymentCreateView(APIView):
                     status=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 )
 
-            self._wait_for_in_flight_request(existing_record)
+            await self._wait_for_in_flight_request(existing_record, max_wait=10)
 
             return self._build_cached_response(existing_record)
 
         try:
-            idempotency_record = IdempotencyRecord.objects.create(
+            idempotency_record = await sync_to_async(IdempotencyRecord.objects.create)(
                 user=request.user,
                 key=idem_key,
                 request_body=request_body,
@@ -73,14 +76,14 @@ class PaymentCreateView(APIView):
         except IntegrityError:
             # If two exact requests hit this line at the same millisecond,
             # the database's unique constraint will throw an IntegrityError for one of them.
-            existing_record = IdempotencyRecord.objects.get(
-                user=request.user, key=idem_key
-            )
-            self._wait_for_in_flight_request(existing_record)
+            existing_record = await sync_to_async(
+                lambda: IdempotencyRecord.objects.get(user=request.user, key=idem_key)
+            )()
+            await self._wait_for_in_flight_request(existing_record, max_wait=10)
             return self._build_cached_response(existing_record)
 
         try:
-            time.sleep(2)
+            await asyncio.sleep(2)
 
             response_body = {
                 "status": "success",
@@ -93,24 +96,24 @@ class PaymentCreateView(APIView):
             idempotency_record.response_body = response_body
             idempotency_record.status_code = status.HTTP_201_CREATED
             idempotency_record.processing_completed = True
-            idempotency_record.save()
+            await sync_to_async(idempotency_record.save)()
 
             return Response(response_body, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             # If the payment processing crashes, delete the
             # pending record so the user is not permanently locked out from retrying.
-            idempotency_record.delete()
+            await sync_to_async(idempotency_record.delete)()
             raise e
 
-    def _wait_for_in_flight_request(self, record, max_wait=5):
+    async def _wait_for_in_flight_request(self, record, max_wait=5):
         """Polls the DB briefly if another request is currently processing this key."""
         if not record.processing_completed:
             waited = 0
             while not record.processing_completed and waited < max_wait:
-                time.sleep(0.1)
+                await asyncio.sleep(0.1)
                 waited += 0.1
-                record.refresh_from_db()
+                await sync_to_async(record.refresh_from_db)()
 
     def _build_cached_response(self, record):
         """Returns the saved response with the X-Cache-Hit header."""

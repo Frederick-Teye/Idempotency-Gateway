@@ -224,7 +224,7 @@ The application is deployed live and can be tested right from your terminal. The
 You must first create a user account to get an authentication token. You can skip this step if you already have an account and just proceed to login.
 
 ```bash
-curl -X POST https://frederickteye.pythonanywhere.com/api/v1/auth/register/ \
+curl -X POST localhost:8000/api/v1/auth/register/ \
      -H "Content-Type: application/json" \
      -d '{
            "email": "demouser1@example.com",
@@ -238,7 +238,7 @@ _Note the `"token"` returned in the response._
 ### Step 2: Login (If you already have an account)
 
 ```bash
-curl -X POST https://frederickteye.pythonanywhere.com/api/v1/auth/login/ \
+curl -X POST localhost:8000/api/v1/auth/login/ \
      -H "Content-Type: application/json" \
      -d '{
            "email": "demouser1@example.com",
@@ -253,10 +253,15 @@ _Note the `"token"` returned in the response._
 Export your token to your shell environment (replace `<your-token-here>` with the token from Step 1 or 2). We will use a static UUIDv4 for testing.
 
 ```bash
-export TOKEN="<your-token-here>"
-export IDEMP_KEY="95ca80fa-40dd-4286-9b57-df457d19163f"
+export TOKEN="072afd220515d62d382b38717987bfe13e277cc3"
+export IDEMP_KEY="95ca80fa-40dd-4286-9b57-df457d19163g"
+export IDEMP_KEY="6bb48f2e-db37-4a5c-bec9-b91601b80816"
+export IDEMP_KEY="42a9cc2e-6211-4ad9-be26-b09922fe576a"
+export IDEMP_KEY="edca1651-a19b-4953-8977-19e34a7b0a33"
 
-curl -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+
+
+curl -X POST localhost:8000/api/v1/process-payment/ \
      -H "Authorization: Token $TOKEN" \
      -H "Idempotency-Key: $IDEMP_KEY" \
      -H "Content-Type: application/json" \
