@@ -1,6 +1,6 @@
-# Idempotency-Gateway (The "Pay-Once" Protocol)
+# Idempotency-Gateway
 
-Welcome to the **Idempotency-Gateway** repository, a robust middleware service simulating a real-world payment processing environment with comprehensive idempotency guarantees.
+Welcome to the **Idempotency-Gateway** repository, a robust middleware service simulating a real-world payment processing environment with comprehensive idempotency guarantees. Checkout the upgrade branch for my an update I did for the project.
 
 ## 1. Business Context & Objective
 
