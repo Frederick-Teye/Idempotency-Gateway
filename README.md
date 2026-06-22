@@ -1,6 +1,6 @@
-# Idempotency-Gateway (The "Pay-Once" Protocol)
+# Idempotency-Gateway (Updated Version)
 
-Welcome to the **Idempotency-Gateway** repository, a robust middleware service simulating a real-world payment processing environment with comprehensive idempotency guarantees.
+Welcome to the **Idempotency-Gateway** repository, a robust middleware service simulating a real-world payment processing environment with comprehensive idempotency guarantees. I edited this project to include a TTL cleanup process for idempotency records, with a background worker process, and turn the view to an asynchronous view. I realized that turning the view into an async doesn't stop the view from behaving as expected when the response time is increased, this is because of the exponential backoff used when polling for in-flight requests. I was not recommended for the idea I had not to just implement a while loop that will DDOS the database. Nevertheless, I implemented it anyway since the mentioned it, which I think is a flawed implementation.
 
 ## 1. Business Context & Objective
 
@@ -81,6 +81,13 @@ The project is built on **Python 3.x** and **Django REST Framework (DRF)**. A st
    python manage.py runserver
    ```
    _The server should now be running locally at `http://127.0.0.1:8000/`._
+
+7. **Start the Background Cleanup Worker**
+   To automatically delete expired idempotency records, open a **separate terminal**, ensure your virtual environment is activated, and run:
+   ```bash
+   python ttl_cleanup_worker.py
+   ```
+   _This process runs a background scheduler that executes the cleanup routine once a day, deleting records older than 1 week._
 
 ---
 
@@ -224,7 +231,7 @@ The application is deployed live and can be tested right from your terminal. The
 You must first create a user account to get an authentication token. You can skip this step if you already have an account and just proceed to login.
 
 ```bash
-curl -X POST localhost:8000/api/v1/auth/register/ \
+curl -i -X POST localhost:8000/api/v1/auth/register/ \
      -H "Content-Type: application/json" \
      -d '{
            "email": "demouser1@example.com",
@@ -238,7 +245,7 @@ _Note the `"token"` returned in the response._
 ### Step 2: Login (If you already have an account)
 
 ```bash
-curl -X POST localhost:8000/api/v1/auth/login/ \
+curl -i -X POST localhost:8000/api/v1/auth/login/ \
      -H "Content-Type: application/json" \
      -d '{
            "email": "demouser1@example.com",
@@ -261,7 +268,7 @@ export IDEMP_KEY="edca1651-a19b-4953-8977-19e34a7b0a33"
 
 
 
-curl -X POST localhost:8000/api/v1/process-payment/ \
+curl -i -X POST localhost:8000/api/v1/process-payment/ \
      -H "Authorization: Token $TOKEN" \
      -H "Idempotency-Key: $IDEMP_KEY" \
      -H "Content-Type: application/json" \
@@ -295,7 +302,7 @@ _This request will return instantly with the exact same response body, proving t
 Try using the **same idempotency key** but changing the payload (e.g., changing the amount).
 
 ```bash
-curl -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
+curl -i -X POST https://frederickteye.pythonanywhere.com/api/v1/process-payment/ \
      -H "Authorization: Token $TOKEN" \
      -H "Idempotency-Key: $IDEMP_KEY" \
      -H "Content-Type: application/json" \
