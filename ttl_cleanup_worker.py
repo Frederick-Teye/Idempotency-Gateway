@@ -16,7 +16,6 @@ from django.core.management import call_command
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
@@ -28,7 +27,7 @@ def cleanup_expired_records():
     """Run the cleanup command"""
     try:
         logger.info("Starting idempotency record cleanup...")
-        call_command("cleanup_expired_records", ttl=3600)  # 1 hour TTL
+        call_command("cleanup_expired_records", ttl=604800)  # 1 week TTL
         logger.info("Cleanup completed successfully")
     except Exception as e:
         logger.error(f"Cleanup failed: {e}")
@@ -38,17 +37,17 @@ def main():
     """Start the background scheduler"""
     scheduler = BlockingScheduler()
 
-    # Run cleanup every 10 minutes
+    # Run cleanup once a day
     scheduler.add_job(
         cleanup_expired_records,
         "interval",
-        minutes=10,
+        days=1,
         id="cleanup_job",
         name="Cleanup expired idempotency records",
     )
 
     logger.info("TTL Cleanup Worker started")
-    logger.info("Running cleanup every 10 minutes with 1 hour TTL")
+    logger.info("Running cleanup once a day with 1 week TTL")
     logger.info("Press Ctrl+C to stop")
 
     try:

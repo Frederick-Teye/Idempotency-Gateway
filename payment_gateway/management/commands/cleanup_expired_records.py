@@ -11,8 +11,8 @@ class Command(BaseCommand):
         parser.add_argument(
             "--ttl",
             type=int,
-            default=3600,
-            help="Time to live in seconds (default: 3600 = 1 hour)",
+            default=604800,
+            help="Time to live in seconds (default: 604800 = 1 week)",
         )
         parser.add_argument(
             "--dry-run",
@@ -37,7 +37,7 @@ class Command(BaseCommand):
             self.stdout.write(
                 self.style.WARNING(f"[DRY RUN] Would delete {count} expired record(s)")
             )
-            for record in expired_records[:10]:  # Show first 10
+            for record in expired_records[:10]:
                 self.stdout.write(
                     f"  - User: {record.user.email}, Key: {record.key}, Created: {record.created_at}"
                 )
